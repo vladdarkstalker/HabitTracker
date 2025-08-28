@@ -1,0 +1,420 @@
+/* ==== Habit Tracker minimal, high-contrast ==== */
+.htrk-container { 
+  padding: 12px; 
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; 
+}
+
+.htrk-current-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-bottom: 15px;
+  text-align: center;
+  padding: 8px;
+  background: var(--background-modifier-hover);
+  border-radius: 8px;
+}
+
+.htrk-header { 
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.htrk-title { 
+  font-size: 16px; 
+  font-weight: 600; 
+  color: var(--text-normal); 
+  margin-right: auto; 
+}
+
+.htrk-nav-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.htrk-mode-switcher {
+  display: flex;
+  gap: 4px;
+  background: var(--background-modifier-hover);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.htrk-mode-btn {
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.htrk-mode-btn.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.htrk-nav-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.htrk-nav-btn {
+  padding: 6px 8px;
+  border: 1px solid var(--interactive-normal);
+  border-radius: 8px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.htrk-date-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--interactive-normal);
+  border-radius: 8px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 13px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.htrk-date-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.htrk-legend { 
+  font-size: 12px; 
+  color: var(--text-muted); 
+  margin: 6px 0 12px; 
+}
+
+.htrk-table-container {
+  overflow-x: auto;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.htrk-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  table-layout: auto; 
+  min-width: 400px;
+}
+
+.htrk-table th, .htrk-table td { 
+  border: 1px solid var(--background-modifier-border); 
+  padding: 6px; 
+  text-align: center; 
+}
+
+.htrk-table th { 
+  background: var(--background-modifier-hover); 
+  font-weight: 700; 
+  color: var(--text-normal); 
+  position: sticky; 
+  top: 0; 
+  min-width: 30px;
+}
+
+.htrk-habit-header {
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
+}
+
+.htrk-habit-cell { 
+  text-align:left; 
+  white-space:nowrap; 
+  overflow:hidden; 
+  text-overflow: ellipsis;
+  position: sticky;
+  left: 0;
+  background: var(--background-primary);
+  z-index: 1;
+  min-width: 200px;
+  max-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.htrk-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 16px;
+  user-select: none;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.htrk-drag-handle:active {
+  cursor: grabbing;
+}
+
+.htrk-habit-name {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.htrk-cell { 
+  cursor: pointer; 
+  user-select: none; 
+  font-size: 18px; 
+  line-height: 1; 
+  color: var(--text-normal); 
+  min-width: 30px;
+}
+
+/* Drag and drop styles */
+.htrk-table tr.dragging {
+  opacity: 0.5;
+  background: var(--background-modifier-hover);
+}
+
+.htrk-table tr.drag-over {
+  background: var(--background-modifier-active);
+}
+
+.htrk-table tr.drag-over td {
+  border-top: 2px solid var(--interactive-accent);
+}
+
+.htrk-row-actions { 
+  display:flex; 
+  gap:6px; 
+  align-items:center; 
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.htrk-icon-btn { 
+  cursor:pointer; 
+  border:none; 
+  background:none; 
+  padding:0 4px; 
+  font-size:14px; 
+  color: var(--text-muted); 
+  flex-shrink: 0;
+}
+
+.htrk-icon-btn:hover { 
+  color: var(--text-normal); 
+}
+
+.htrk-toolbar { 
+  display:flex; 
+  gap:6px; 
+  align-items:center; 
+  margin:8px 0 12px; 
+}
+
+.htrk-graph { 
+  width: 100%; 
+  height: 180px; 
+  margin-top: 8px; 
+}
+
+/* Calendar styles */
+.htrk-calendar {
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.htrk-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.htrk-calendar-nav {
+  padding: 4px 8px;
+  border: 1px solid var(--interactive-normal);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.htrk-calendar-month {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.htrk-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.htrk-calendar-weekday {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.htrk-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.htrk-calendar-day {
+  padding: 6px;
+  text-align: center;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.htrk-calendar-day:hover {
+  background: var(--background-modifier-hover);
+}
+
+.htrk-calendar-day.today {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.htrk-calendar-day.empty {
+  background: transparent;
+  cursor: default;
+}
+
+/* Стили для модальных окон */
+.modal {
+  background-color: var(--background-primary);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--background-modifier-border);
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal h2 {
+  margin-top: 0;
+  color: var(--text-normal);
+  font-size: 1.5em;
+}
+
+.modal-input-container {
+  margin: 15px 0;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--interactive-normal);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.modal-button-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.modal-button-container button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--interactive-normal);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.modal-button-container button.mod-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.modal-button-container button.mod-warning {
+  background: var(--text-error);
+  color: var(--text-on-accent);
+  border-color: var(--text-error);
+}
+
+.modal-button-container button:hover {
+  background: var(--interactive-hover);
+}
+
+.modal-button-container button.mod-cta:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.modal-button-container button.mod-warning:hover {
+  background: var(--text-error-hover);
+}
+
+@media (max-width: 768px) {
+  .htrk-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .htrk-title {
+    margin-right: 0;
+    text-align: center;
+  }
+  
+  .htrk-nav-container {
+    margin-left: 0;
+    justify-content: center;
+  }
+  
+  .htrk-table th, .htrk-table td { padding: 4px; }
+  .htrk-cell { font-size: 16px; }
+  .htrk-input { width: 100%; }
+  .htrk-habit-cell { min-width: 160px; max-width: 160px; }
+  .htrk-habit-header { min-width: 160px !important; max-width: 160px !important; }
+  .htrk-habit-name { max-width: 110px; }
+}
+
+@media (max-width: 480px) {
+  .htrk-habit-cell { min-width: 140px; max-width: 140px; }
+  .htrk-habit-header { min-width: 140px !important; max-width: 140px !important; }
+  .htrk-habit-name { max-width: 90px; }
+  .htrk-row-actions { gap: 4px; }
+  .htrk-icon-btn { padding: 0 2px; }
+  .htrk-date-btn { min-width: 100px; font-size: 12px; }
+}
+
+.htrk-week-header {
+  white-space: pre-line;
+  line-height: 1.2;
+  padding: 4px 2px;
+  font-size: 11px;
+}
+
+.htrk-nav-btn.today {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.htrk-nav-btn.today:hover {
+  background: var(--interactive-accent-hover);
+}

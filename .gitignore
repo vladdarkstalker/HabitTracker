@@ -1,0 +1,16 @@
+# Node / build artifacts
+node_modules/
+dist/
+*.log
+
+# Obsidian plugin build cache
+.obsidian/
+
+# Пользовательские данные
+data.json
+data/
+HabitTracker/
+
+# OS-specific
+.DS_Store
+Thumbs.db

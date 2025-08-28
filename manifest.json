@@ -1,0 +1,10 @@
+{
+  "id": "habit-tracker-fixed",
+  "name": "Habit Tracker (Dashboard)",
+  "version": "1.5.0",
+  "minAppVersion": "1.4.0",
+  "description": "Трекер задач на месяц/неделю, с авто-построением графика активности.",
+  "author": "vladdarkstalker",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
