@@ -1,6 +1,6 @@
 {
-  "id": "habit-tracker",
-  "name": "Habit Tracker",
+  "id": "mini-habit-tracker",
+  "name": "Mini Habit Tracker",
   "version": "1.5.0",
   "minAppVersion": "1.4.0",
   "description": "Трекер задач на месяц/неделю, с авто-построением графика активности.",
