@@ -1,8 +1,22 @@
 /* ==== Habit Tracker minimal, high-contrast ==== */
 .htrk-container { 
   padding: 12px; 
+  --htrk-habit-col: 200px; /* управляется из JS */
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; 
 }
+
+/* ручка-резайзера у заголовка "Задачи" */
+.htrk-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  opacity: 0.25;
+}
+.htrk-col-resizer:hover { opacity: 0.5; }
 
 .htrk-current-title {
   font-size: 18px;
@@ -53,7 +67,6 @@
   cursor: pointer;
   font-size: 12px;
 }
-
 .htrk-mode-btn.active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
@@ -74,7 +87,6 @@
   cursor: pointer;
   font-size: 13px;
 }
-
 .htrk-date-btn {
   padding: 6px 12px;
   border: 1px solid var(--interactive-normal);
@@ -86,10 +98,7 @@
   min-width: 120px;
   text-align: center;
 }
-
-.htrk-date-btn:hover {
-  background: var(--background-modifier-hover);
-}
+.htrk-date-btn:hover { background: var(--background-modifier-hover); }
 
 .htrk-legend { 
   font-size: 12px; 
@@ -125,23 +134,28 @@
   min-width: 30px;
 }
 
+/* Левый заголовок "Задачи" — тоже прилипает слева */
 .htrk-habit-header {
-  width: 200px !important;
-  min-width: 200px !important;
-  max-width: 200px !important;
+  position: sticky; 
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: var(--htrk-habit-col);
+  min-width: var(--htrk-habit-col);
+  max-width: var(--htrk-habit-col);
 }
 
-.htrk-habit-cell { 
-  text-align:left; 
-  white-space:nowrap; 
-  overflow:hidden; 
+.htrk-habit-cell {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
   position: sticky;
   left: 0;
   background: var(--background-primary);
   z-index: 1;
-  min-width: 200px;
-  max-width: 200px;
+  min-width: var(--htrk-habit-col);
+  max-width: var(--htrk-habit-col);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -155,10 +169,7 @@
   padding: 2px;
   flex-shrink: 0;
 }
-
-.htrk-drag-handle:active {
-  cursor: grabbing;
-}
+.htrk-drag-handle:active { cursor: grabbing; }
 
 .htrk-habit-name {
   display: inline-block;
@@ -184,14 +195,8 @@
   opacity: 0.5;
   background: var(--background-modifier-hover);
 }
-
-.htrk-table tr.drag-over {
-  background: var(--background-modifier-active);
-}
-
-.htrk-table tr.drag-over td {
-  border-top: 2px solid var(--interactive-accent);
-}
+.htrk-table tr.drag-over { background: var(--background-modifier-active); }
+.htrk-table tr.drag-over td { border-top: 2px solid var(--interactive-accent); }
 
 .htrk-row-actions { 
   display:flex; 
@@ -200,7 +205,6 @@
   margin-left: auto;
   flex-shrink: 0;
 }
-
 .htrk-icon-btn { 
   cursor:pointer; 
   border:none; 
@@ -210,10 +214,7 @@
   color: var(--text-muted); 
   flex-shrink: 0;
 }
-
-.htrk-icon-btn:hover { 
-  color: var(--text-normal); 
-}
+.htrk-icon-btn:hover { color: var(--text-normal); }
 
 .htrk-toolbar { 
   display:flex; 
@@ -228,76 +229,6 @@
   margin-top: 8px; 
 }
 
-/* Calendar styles */
-.htrk-calendar {
-  width: 100%;
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.htrk-calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.htrk-calendar-nav {
-  padding: 4px 8px;
-  border: 1px solid var(--interactive-normal);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  cursor: pointer;
-}
-
-.htrk-calendar-month {
-  font-weight: 600;
-  color: var(--text-normal);
-}
-
-.htrk-calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.htrk-calendar-weekday {
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.htrk-calendar-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.htrk-calendar-day {
-  padding: 6px;
-  text-align: center;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.htrk-calendar-day:hover {
-  background: var(--background-modifier-hover);
-}
-
-.htrk-calendar-day.today {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.htrk-calendar-day.empty {
-  background: transparent;
-  cursor: default;
-}
-
 /* Стили для модальных окон */
 .modal {
   background-color: var(--background-primary);
@@ -308,96 +239,59 @@
   max-width: 400px;
   width: 90%;
 }
-
-.modal h2 {
-  margin-top: 0;
-  color: var(--text-normal);
-  font-size: 1.5em;
-}
-
-.modal-input-container {
-  margin: 15px 0;
-}
-
+.modal h2 { margin-top: 0; color: var(--text-normal); font-size: 1.5em; }
+.modal-input-container { margin: 15px 0; }
 .modal-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--interactive-normal);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  font-size: 14px;
+  width: 100%; padding: 8px 12px; border: 1px solid var(--interactive-normal);
+  border-radius: 4px; background: var(--background-primary); color: var(--text-normal); font-size: 14px;
 }
-
-.modal-button-container {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 15px;
-}
-
+.modal-button-container { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
 .modal-button-container button {
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: 1px solid var(--interactive-normal);
-  background: var(--interactive-normal);
-  color: var(--text-normal);
-  cursor: pointer;
-  font-size: 14px;
+  padding: 6px 12px; border-radius: 4px; border: 1px solid var(--interactive-normal);
+  background: var(--interactive-normal); color: var(--text-normal); cursor: pointer; font-size: 14px;
 }
+.modal-button-container button.mod-cta { background: var(--interactive-accent); color: var(--text-on-accent); border-color: var(--interactive-accent); }
+.modal-button-container button.mod-warning { background: var(--text-error); color: var(--text-on-accent); border-color: var(--text-error); }
+.modal-button-container button:hover { background: var(--interactive-hover); }
+.modal-button-container button.mod-cta:hover { background: var(--interactive-accent-hover); }
+.modal-button-container button.mod-warning:hover { background: var(--text-error-hover); }
 
-.modal-button-container button.mod-cta {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
-}
+/* Calendar bits kept minimal (if you later add a date picker) */
+.htrk-calendar { width: 100%; max-width: 300px; margin: 0 auto; }
+.htrk-calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.htrk-calendar-nav { padding: 4px 8px; border: 1px solid var(--interactive-normal); border-radius: 4px; background: var(--background-primary); color: var(--text-normal); cursor: pointer; }
+.htrk-calendar-month { font-weight: 600; color: var(--text-normal); }
+.htrk-calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+.htrk-calendar-weekday { text-align: center; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.htrk-calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.htrk-calendar-day { padding: 6px; text-align: center; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.htrk-calendar-day:hover { background: var(--background-modifier-hover); }
+.htrk-calendar-day.today { background: var(--interactive-accent); color: var(--text-on-accent); }
+.htrk-calendar-day.empty { background: transparent; cursor: default; }
 
-.modal-button-container button.mod-warning {
-  background: var(--text-error);
-  color: var(--text-on-accent);
-  border-color: var(--text-error);
-}
-
-.modal-button-container button:hover {
-  background: var(--interactive-hover);
-}
-
-.modal-button-container button.mod-cta:hover {
-  background: var(--interactive-accent-hover);
-}
-
-.modal-button-container button.mod-warning:hover {
-  background: var(--text-error-hover);
-}
-
+/* Mobile tweaks */
 @media (max-width: 768px) {
-  .htrk-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .htrk-title {
-    margin-right: 0;
-    text-align: center;
-  }
-  
-  .htrk-nav-container {
-    margin-left: 0;
-    justify-content: center;
-  }
-  
+  .htrk-header { flex-direction: column; align-items: stretch; }
+  .htrk-title { margin-right: 0; text-align: center; }
+  .htrk-nav-container { margin-left: 0; justify-content: center; }
+
   .htrk-table th, .htrk-table td { padding: 4px; }
   .htrk-cell { font-size: 16px; }
   .htrk-input { width: 100%; }
-  .htrk-habit-cell { min-width: 160px; max-width: 160px; }
-  .htrk-habit-header { min-width: 160px !important; max-width: 160px !important; }
-  .htrk-habit-name { max-width: 110px; }
-}
 
+  /* мягкий потолок: не шире 160px на узких экранах */
+  .htrk-habit-cell,
+  .htrk-habit-header {
+    min-width: min(var(--htrk-habit-col), 160px);
+    max-width: min(var(--htrk-habit-col), 160px);
+  }
+}
 @media (max-width: 480px) {
-  .htrk-habit-cell { min-width: 140px; max-width: 140px; }
-  .htrk-habit-header { min-width: 140px !important; max-width: 140px !important; }
-  .htrk-habit-name { max-width: 90px; }
+  .htrk-habit-cell,
+  .htrk-habit-header {
+    min-width: min(var(--htrk-habit-col), 140px);
+    max-width: min(var(--htrk-habit-col), 140px);
+  }
   .htrk-row-actions { gap: 4px; }
   .htrk-icon-btn { padding: 0 2px; }
   .htrk-date-btn { min-width: 100px; font-size: 12px; }
@@ -410,11 +304,5 @@
   font-size: 11px;
 }
 
-.htrk-nav-btn.today {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.htrk-nav-btn.today:hover {
-  background: var(--interactive-accent-hover);
-}
+.htrk-nav-btn.today { background: var(--interactive-accent); color: var(--text-on-accent); }
+.htrk-nav-btn.today:hover { background: var(--interactive-accent-hover); }

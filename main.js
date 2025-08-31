@@ -1,23 +1,27 @@
-// Habit Tracker — original UI, STORAGE REWORKED: adapter.read/write + recursive dirs + immediate writes
+// Habit Tracker — adaptive "Задачи" column + copy prev/next period + robust storage
 const { Plugin, ItemView, Modal, Notice, PluginSettingTab, Setting, normalizePath } = require('obsidian');
 
 /* ====== Consts ====== */
-const VIEW_TYPE = "habit-tracker-view";
+const VIEW_TYPE   = "habit-tracker-view";
 const DEFAULT_DIR = "HabitTracker";
-const MODE_MONTH = "month";
-const MODE_WEEK  = "week";
+const MODE_MONTH  = "month";
+const MODE_WEEK   = "week";
+
+const MIN_DAY_W   = 30;   // минимальная ширина столбца дня
+const MIN_HABIT_W = 140;  // нижний предел колонки "Задачи"
+const MAX_HABIT_W = 640;  // верхний предел безопасности
 
 /* ====== Helpers ====== */
 function pad2(n){ return (n<10?"0":"")+n; }
 function monthIdFromDate(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1); }
 function weekIdFromDate(d){
   const year = d.getFullYear();
-  const month = pad2(d.getMonth() + 1);
-  const firstDay = new Date(year, d.getMonth(), 1);
-  const firstDayWeek = firstDay.getDay() || 7;
-  const offset = firstDayWeek - 1;
-  const weekNum = Math.ceil((d.getDate() + offset) / 7);
-  return `${year}-${month}-W${weekNum}`;
+  const month = d.getMonth();
+  const first = new Date(year, month, 1);
+  const firstWeekday = first.getDay() || 7; // 1..7 (Mon..Sun), with Sun=7
+  const offset = firstWeekday - 1;          // 0..6
+  const week = Math.ceil((d.getDate() + offset) / 7);
+  return `${year}-${pad2(month+1)}-W${week}`;
 }
 function monthNameRu(idx){
   const ru = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
@@ -25,7 +29,7 @@ function monthNameRu(idx){
 }
 function getWeekDates(year, month, weekNumber) {
   const firstDayOfMonth = new Date(year, month, 1);
-  const firstDayOfWeek = firstDayOfMonth.getDay() || 7;
+  const firstDayOfWeek = firstDayOfMonth.getDay() || 7; // 1..7, с Вс=7
   let startDate = new Date(year, month, 1 + (weekNumber - 1) * 7 - (firstDayOfWeek - 1));
   if (startDate.getMonth() !== month) startDate = new Date(year, month, 1);
   const endDate = new Date(startDate);
@@ -35,7 +39,7 @@ function getWeekDates(year, month, weekNumber) {
 }
 function getWeeksInMonth(year, month) {
   const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
+  const lastDay  = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
   const firstDayWeek = firstDay.getDay() || 7;
   return Math.ceil((daysInMonth + firstDayWeek - 1) / 7);
@@ -73,39 +77,6 @@ class HabitDeleteModal extends Modal {
   }
   onClose(){ this.contentEl.empty(); }
 }
-class DateSelectionModal extends Modal {
-  constructor(app, currentDate, mode, onSubmit){ super(app); this.currentDate=new Date(currentDate); this.mode=mode; this.onSubmit=onSubmit; }
-  onOpen(){
-    const c=this.contentEl; c.createEl('h2',{text:'Выберите дату'});
-    const cal=c.createDiv({cls:'htrk-calendar'});
-    const header=cal.createDiv({cls:'htrk-calendar-header'});
-    const prev=header.createEl('button',{cls:'htrk-calendar-nav',text:'←'});
-    const title=header.createDiv({cls:'htrk-calendar-month'});
-    const next=header.createEl('button',{cls:'htrk-calendar-nav',text:'→'});
-    const wd=cal.createDiv({cls:'htrk-calendar-weekdays'});
-    ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(d=>wd.createDiv({cls:'htrk-calendar-weekday',text:d}));
-    this.daysGrid=cal.createDiv({cls:'htrk-calendar-days'});
-    const render=()=>this._renderMonth(title);
-    prev.onclick=()=>{ this.currentDate.setMonth(this.currentDate.getMonth()-1); render(); };
-    next.onclick=()=>{ this.currentDate.setMonth(this.currentDate.getMonth()+1); render(); };
-    render();
-    const bx=c.createDiv({cls:'modal-button-container'});
-    bx.createEl('button',{text:'Отмена'}).onclick=()=>this.close();
-  }
-  _renderMonth(monthYear){
-    const y=this.currentDate.getFullYear(), m=this.currentDate.getMonth();
-    monthYear.setText(`${monthNameRu(m)} ${y}`); this.daysGrid.empty();
-    const first=new Date(y,m,1), last=new Date(y,m+1,0), days=last.getDate();
-    let start=first.getDay(); if(start===0) start=7; start-=1;
-    for(let i=0;i<start;i++) this.daysGrid.createDiv({cls:'htrk-calendar-day empty'});
-    for(let d=1; d<=days; d++){
-      const cell=this.daysGrid.createDiv({cls:'htrk-calendar-day'}); cell.setText(d);
-      const t=new Date(); if(y===t.getFullYear() && m===t.getMonth() && d===t.getDate()) cell.addClass('today');
-      cell.onclick=()=>{ const sel=new Date(y,m,d); this.onSubmit(this.mode===MODE_MONTH?monthIdFromDate(sel):weekIdFromDate(sel)); this.close(); };
-    }
-  }
-  onClose(){ this.contentEl.empty(); }
-}
 
 /* ====== Settings ====== */
 class HabitTrackerSettingTab extends PluginSettingTab {
@@ -116,29 +87,25 @@ class HabitTrackerSettingTab extends PluginSettingTab {
       .setName('Папка для данных')
       .setDesc('Внутри появятся папки months/ и weeks/')
       .addText(t=>t.setPlaceholder(DEFAULT_DIR).setValue(this.plugin.settings.dataFolder)
-        .onChange(async v=>{ this.plugin.settings.dataFolder=v||DEFAULT_DIR; await this.plugin.saveSettings(); }));
+        .onChange(async v=>{ this.plugin.settings.dataFolder=v||DEFAULT_DIR; await this.saveSettings(); }));
   }
 }
 
-/* ====== STORAGE (reworked) ====== */
+/* ====== STORAGE ====== */
 class Storage {
   constructor(plugin){ this.plugin=plugin; }
-
   _path(id, mode){
     const base = normalizePath(this.plugin.settings.dataFolder || DEFAULT_DIR);
     const sub  = mode===MODE_MONTH ? 'months' : 'weeks';
     return normalizePath(`${base}/${sub}/${id}.json`);
   }
-
   async _ensureDirs(mode){
     const base = normalizePath(this.plugin.settings.dataFolder || DEFAULT_DIR);
     const sub  = mode===MODE_MONTH ? 'months' : 'weeks';
-    // создаём базовую папку и подпапку, если их нет
     const ensure = async (p) => { if(!(await this.plugin.app.vault.adapter.exists(p))) await this.plugin.app.vault.adapter.mkdir(p); };
     await ensure(base);
     await ensure(`${base}/${sub}`);
   }
-
   async read(id, mode){
     try{
       await this._ensureDirs(mode);
@@ -150,11 +117,9 @@ class Storage {
       }
       const raw = await this.plugin.app.vault.adapter.read(path);
       const data = JSON.parse(raw || "{}");
-      // sane defaults
       if (!data.habits) data.habits=[];
       if (!data.states) data.states={};
       if (!data.order)  data.order=data.habits.slice();
-      // order = только существующие + хвост новых
       const valid = data.order.filter(h=>data.habits.includes(h));
       const tail  = data.habits.filter(h=>!valid.includes(h));
       data.order = [...valid, ...tail];
@@ -165,7 +130,6 @@ class Storage {
       return emptyPeriodData([]);
     }
   }
-
   async write(id, mode, data){
     try{
       await this._ensureDirs(mode);
@@ -181,7 +145,6 @@ class Storage {
 /* ====== Plugin ====== */
 class HabitTrackerPlugin extends Plugin {
   async onload(){
-    // глобальные настройки + state (через saveData)
     const saved = await this.loadData() || {};
     this.settings = Object.assign({ dataFolder: DEFAULT_DIR }, saved.settings || {});
     this.state    = Object.assign({
@@ -192,16 +155,13 @@ class HabitTrackerPlugin extends Plugin {
 
     this.storage = new Storage(this);
 
-    // view + команды
     this.registerView(VIEW_TYPE, leaf => new HabitTrackerView(leaf, this));
     this.addRibbonIcon("check-circle", "Open Habit Tracker", () => this.activateView());
     this.addCommand({ id:"open-habit-tracker", name:"Open Habit Tracker", callback:()=>this.activateView() });
     this.addSettingTab(new HabitTrackerSettingTab(this.app, this));
   }
 
-  async onunload(){
-    await this.savePluginData(); // сохранить settings/state
-  }
+  async onunload(){ await this.savePluginData(); }
 
   async activateView(){
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
@@ -221,7 +181,7 @@ class HabitTrackerPlugin extends Plugin {
   async saveDataById(id, data, mode){ await this.storage.write(id, mode, data); }
 }
 
-/* ====== View (оригинальный UI как был) ====== */
+/* ====== View ====== */
 class HabitTrackerView extends ItemView {
   constructor(leaf, plugin){
     super(leaf);
@@ -232,9 +192,111 @@ class HabitTrackerView extends ItemView {
     this.cachedData = new Map();
     this.inputElement = null;
     this.draggedRow = null;
+
+    this._habitWidthPx   = null;
+    this._lastDaysCount  = null;
+    this._onResize       = null;
+    this._resizeRAF      = 0;
   }
   getViewType(){ return VIEW_TYPE; }
   getDisplayText(){ return "Трекер задач"; }
+
+  /* ---- adaptive "Задачи" width helpers ---- */
+  _habitWidthStateKey() {
+    return this.mode === MODE_MONTH ? 'habitWidthMonth' : 'habitWidthWeek';
+  }
+  _computeMaxHabitWidth(daysCount) {
+    const hostW = this.tableHost?.clientWidth || 600;
+    const reserve = 20 + daysCount; // небольшая «подушечка» под границы/скролл
+    const max = hostW - daysCount * MIN_DAY_W - reserve;
+    return Math.max(MIN_HABIT_W, Math.min(MAX_HABIT_W, max));
+  }
+  _applyHabitWidth(daysCount) {
+    const key   = this._habitWidthStateKey();
+    const saved = this.plugin.state[key];
+    const maxW  = this._computeMaxHabitWidth(daysCount);
+    const width = Math.max(MIN_HABIT_W, Math.min((saved ?? maxW), maxW));
+    this.root.style.setProperty('--htrk-habit-col', width + 'px');
+    this._habitWidthPx = width;
+  }
+  _setupHabitColResizer(hHdr, daysCount) {
+    hHdr.style.position = 'relative';
+    const grip = hHdr.createDiv({ cls: 'htrk-col-resizer' });
+
+    const startDrag = (ev) => {
+      ev.preventDefault();
+      const startX = ev.clientX;
+      const startW = this._habitWidthPx
+        || parseInt(getComputedStyle(this.root).getPropertyValue('--htrk-habit-col')) || 200;
+
+      const onMove = (e) => {
+        let next = startW + (e.clientX - startX);
+        next = Math.max(MIN_HABIT_W, Math.min(this._computeMaxHabitWidth(daysCount), next));
+        this.root.style.setProperty('--htrk-habit-col', next + 'px');
+        this._habitWidthPx = next;
+      };
+
+      const onUp = async () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        const key = this._habitWidthStateKey();
+        this.plugin.state[key] = this._habitWidthPx;
+        await this.plugin.saveState();
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    };
+
+    grip.onmousedown = startDrag;
+
+    // двойной клик — авто-подбор в максимально допустимую ширину
+    hHdr.ondblclick = async () => {
+      const maxW = this._computeMaxHabitWidth(daysCount);
+      this._habitWidthPx = maxW;
+      this.root.style.setProperty('--htrk-habit-col', maxW + 'px');
+      const key = this._habitWidthStateKey();
+      this.plugin.state[key] = maxW;
+      await this.plugin.saveState();
+    };
+  }
+
+  /* ---- copy habit helpers ---- */
+  _adjacentId(id, mode, dir) {
+    if (mode === MODE_MONTH) {
+      const [y, m] = id.split('-').map(Number);
+      const d = new Date(y, m - 1 + dir, 1);
+      return monthIdFromDate(d);
+    } else {
+      const [yStr, mStr, wStr] = id.split('-');
+      let y = parseInt(yStr, 10), m = parseInt(mStr, 10), w = parseInt(wStr.slice(1), 10);
+      w += dir;
+      if (w < 1) { m--; if (m < 1) { m = 12; y--; } w = getWeeksInMonth(y, m - 1); }
+      else if (w > getWeeksInMonth(y, m - 1)) { m++; if (m > 12) { m = 1; y++; } w = 1; }
+      return `${y}-${pad2(m)}-W${w}`;
+    }
+  }
+
+async _copyHabit(habit, dir) {
+  const targetId = this._adjacentId(this.currentId, this.mode, dir);
+  const target   = await this.plugin.loadDataById(targetId, this.mode);
+
+  if (!target.habits.includes(habit)) {
+    target.habits.push(habit);
+    target.order.push(habit);
+    target.states[habit] = {}; // переносим только задачу, без отметок
+    await this.plugin.saveDataById(targetId, target, this.mode);
+
+    // 🔧 ключевая строка: актуализируем кэш для целевого периода,
+    // чтобы при навигации туда данные уже были свежие
+    const k = `${this.mode}:${targetId}`;
+    this.cachedData.set(k, target);      // или: this.cachedData.delete(k);
+
+    new Notice(`Скопировано в ${this.mode===MODE_MONTH ? 'месяц' : 'неделю'}: ${targetId}`);
+  } else {
+    new Notice(`Уже существует в ${targetId}`);
+  }
+}
 
   async onOpen(){
     const container = this.containerEl.children[1];
@@ -293,7 +355,18 @@ class HabitTrackerView extends ItemView {
     this.tableHost = this.root.createDiv({cls:"htrk-table-container"});
     this.graphHost = this.root.createDiv({cls:"htrk-graph"});
 
-    await this.render(); this._focusInput();
+    // реагируем на ресайз окна — подбираем max ширину "Задач"
+    this._onResize = () => {
+      if (this._resizeRAF) return;
+      this._resizeRAF = requestAnimationFrame(() => {
+        this._resizeRAF = 0;
+        if (this._lastDaysCount) this._applyHabitWidth(this._lastDaysCount);
+      });
+    };
+    window.addEventListener('resize', this._onResize);
+
+    await this.render();
+    this._focusInput();
   }
 
   getCacheKey(){ return `${this.mode}:${this.currentId}`; }
@@ -329,7 +402,7 @@ class HabitTrackerView extends ItemView {
 
   async saveData(d){
     this.cachedData.set(this.getCacheKey(), d);
-    await this.plugin.saveDataById(this.currentId, d, this.mode); // СРАЗУ пишем файл (без очередей)
+    await this.plugin.saveDataById(this.currentId, d, this.mode); // СРАЗУ пишем файл
   }
 
   _focusInput(){ if(this.inputElement) setTimeout(()=>this.inputElement.focus(),100); }
@@ -349,20 +422,31 @@ class HabitTrackerView extends ItemView {
     }
     this.currentTitle.setText(titleText);
 
+    // Применяем адаптивную ширину колонки "Задачи"
+    this._lastDaysCount = days.length;
+    this._applyHabitWidth(this._lastDaysCount);
+
     const host=this.tableHost; host.empty();
     const data=await this.getData();
 
     const table=host.createEl('table',{cls:'htrk-table'});
     const thead=table.createEl('thead'); const hr=thead.createEl('tr');
-    const hHdr=hr.createEl('th',{cls:'htrk-habit-header', text:'Задачи'}); hHdr.style.width='200px';
+    const hHdr=hr.createEl('th',{cls:'htrk-habit-header', text:'Задачи'});
+
+    // Ручка-резайзер
+    this._setupHabitColResizer(hHdr, days.length);
 
     if (this.mode===MODE_MONTH){
-      for (const d of days){ const th=hr.createEl('th',{text:String(d)}); th.style.minWidth='30px'; }
+      for (const d of days){
+        const th=hr.createEl('th',{text:String(d)});
+        th.style.minWidth = MIN_DAY_W + 'px';
+      }
     } else {
       for (const d of days){
         const names=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
         const th=hr.createEl('th',{cls:'htrk-week-header', text:`${d.dayOfMonth}\n${names[d.date.getDay()]}`});
-        th.style.minWidth='30px'; th.title=`${d.dayOfMonth} ${monthNameRu(d.date.getMonth())}`;
+        th.style.minWidth = MIN_DAY_W + 'px';
+        th.title=`${d.dayOfMonth} ${monthNameRu(d.date.getMonth())}`;
       }
     }
 
@@ -377,8 +461,13 @@ class HabitTrackerView extends ItemView {
       nameTd.createSpan({cls:'htrk-drag-handle', text:'⋮⋮'});
       nameTd.createSpan({cls:'htrk-habit-name', text:habit});
       const actions=nameTd.createDiv({cls:'htrk-row-actions'});
-      const edit=actions.createEl('button',{cls:'htrk-icon-btn', text:'✎'});
-      const del =actions.createEl('button',{cls:'htrk-icon-btn', text:'🗑'});
+      const edit=actions.createEl('button',{cls:'htrk-icon-btn', text:'✎', title:'Переименовать'});
+      const del =actions.createEl('button',{cls:'htrk-icon-btn', text:'🗑', title:'Удалить'});
+      const copyPrev = actions.createEl('button',{cls:'htrk-icon-btn', text:'⟵', title:'Скопировать в предыдущий период'});
+      const copyNext = actions.createEl('button',{cls:'htrk-icon-btn', text:'⟶', title:'Скопировать в следующий период'});
+
+      copyPrev.onclick = async () => { await this._copyHabit(habit, -1); };
+      copyNext.onclick = async () => { await this._copyHabit(habit,  1); };
 
       edit.onclick=()=> new HabitEditModal(this.app, habit, async (newName)=>{
         if (!newName.trim()) return new Notice("Название не может быть пустым");
@@ -459,7 +548,9 @@ class HabitTrackerView extends ItemView {
       for(let i=1;i<points.length;i++){ ctx.lineTo(xScale(i), yScale(points[i]||0)); } ctx.stroke(); }
   }
 
-  async onClose(){ /* ничего — запись идёт сразу */ }
+  async onClose(){
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+  }
 }
 
 module.exports = HabitTrackerPlugin;
